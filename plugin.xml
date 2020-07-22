@@ -22,7 +22,7 @@
         <config-file parent="/*" target="res/xml/config.xml">
             <feature name="BrowserTab">
                 <param name="android-package"
-                    value="com.google.cordova.plugin.browsertab.BrowserTabFix" />
+                    value="com.google.cordova.plugin.browsertab.BrowserTab" />
             </feature>
         </config-file>
         <source-file src="src/android/BrowserTab.java"
