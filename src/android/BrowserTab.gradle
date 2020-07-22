@@ -14,5 +14,5 @@ allprojects {
 }
 dependencies {
     println("GOT DEPENDENCY com.adroid.support:customtabs")
-    implementation "com.android.support:customtabs:28.0.0"
+    compile "com.android.support:customtabs:28.0.0"
 }
