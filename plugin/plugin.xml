@@ -27,7 +27,6 @@
         </config-file>
         <source-file src="src/android/BrowserTab.java"
             target-dir="src/com/google/cordova/plugin" />
-        <framework src="com.android.support:customtabs:23.3.0"/>
         <framework src="src/android/BrowserTab.gradle" custom="true" type="gradleReference"/>
   
         <source-file src="src/android/res/browsertab.xml" target-dir="res/values" />
