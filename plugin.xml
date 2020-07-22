@@ -13,7 +13,7 @@
     <dependency id="cordova-plugin-compat" version="^1.0.0" />
 
     <js-module name="BrowserTab" src="www/browsertab.js">
-        <clobbers target="cordova.plugins.browsertab-fix" />
+        <clobbers target="BrowserTab" />
     </js-module>
   
     <preference name="CUSTOM_TAB_COLOR_RGB" default="#ffffff" />
