@@ -13,7 +13,7 @@
     <dependency id="cordova-plugin-compat" version="^1.0.0" />
 
     <js-module name="BrowserTab" src="www/browsertab.js">
-        <clobbers target="cordova.plugins.browsertab" />
+        <clobbers target="cordova.plugins.browsertab-fix" />
     </js-module>
   
     <preference name="CUSTOM_TAB_COLOR_RGB" default="#ffffff" />
@@ -22,7 +22,7 @@
         <config-file parent="/*" target="res/xml/config.xml">
             <feature name="BrowserTab">
                 <param name="android-package"
-                    value="com.google.cordova.plugin.browsertab.BrowserTab" />
+                    value="com.google.cordova.plugin.browsertab.BrowserTabFix" />
             </feature>
         </config-file>
         <source-file src="src/android/BrowserTab.java"
