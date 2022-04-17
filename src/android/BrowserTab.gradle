@@ -1,8 +1,8 @@
 def minSdkVersion = 16
 
-if(project.hasProperty('cdvMinSdkVersion') == null) {
+if(!project.hasProperty('cdvMinSdkVersion') || project.cdvMinSdkVersion == null ) {
     ext.cdvMinSdkVersion = minSdkVersion;
-} else if (cdvMinSdkVersion.toInteger() < minSdkVersion) {
+} else if (project.cdvMinSdkVersion.toInteger() < minSdkVersion) {
     ext.cdvMinSdkVersion = minSdkVersion;
 }
 allprojects {
