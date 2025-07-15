@@ -45,7 +45,9 @@
   _win.accessibilityIdentifier=@"WINDOW_SFSafariViewController";
   UIViewController*vc=[[UIViewController alloc] init];
   _win.rootViewController=vc;
-  _safariViewController = [[SFSafariViewController alloc] initWithURL:url];
+  SFSafariViewControllerConfiguration* conf=[[SFSafariViewControllerConfiguration alloc] init];
+  conf.barCollapsingEnabled=TRUE;
+  _safariViewController = [[SFSafariViewController alloc] initWithURL:url configuration:conf];
   _safariViewController.delegate=self;
   [vc presentViewController:_safariViewController animated:YES completion:nil];
 
