@@ -15,9 +15,9 @@
  */
 
 #import "CBTBrowserTab.h"
-
 @implementation CBTBrowserTab {
   SFSafariViewController *_safariViewController;
+  UIWindow* _win;
 }
 
 - (void)isAvailable:(CDVInvokedUrlCommand *)command {
@@ -37,26 +37,49 @@
   }
 
   NSURL *url = [NSURL URLWithString:urlString];
-  if ([SFSafariViewController class] != nil) {
-    NSString *errorMessage = @"in app browser tab not available";
-    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
-                                                messageAsString:errorMessage];
-    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
-  }
-
+  //create a separate window where our safari instance lives in
+  //this is to allow the Genero WebView being still active
+  _win=[[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+  [_win makeKeyAndVisible];
+  _win.windowLevel=2; //note this floats above all others
+  _win.accessibilityIdentifier=@"WINDOW_SFSafariViewController";
+  UIViewController*vc=[[UIViewController alloc] init];
+  _win.rootViewController=vc;
   _safariViewController = [[SFSafariViewController alloc] initWithURL:url];
-  [self.viewController presentViewController:_safariViewController animated:YES completion:nil];
+  _safariViewController.delegate=self;
+  [vc presentViewController:_safariViewController animated:YES completion:nil];
 
   CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
   [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
 
-- (void)close:(CDVInvokedUrlCommand *)command {
-  if (!_safariViewController) {
-    return;
+- (void)checkCloseWin
+{
+  if (_win!=nil) {
+    _win.hidden=TRUE;
+    _win=nil;
   }
-  [_safariViewController dismissViewControllerAnimated:YES completion:nil];
-  _safariViewController = nil;
+}
+
+- (void)close:(CDVInvokedUrlCommand *)command {
+  if (_safariViewController!=nil) {
+    [_safariViewController.presentingViewController dismissViewControllerAnimated:YES completion:nil];
+    _safariViewController = nil;
+  }
+  [self checkCloseWin];
+  CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+  [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+}
+# pragma mark - SFSafariViewControllerDelegate
+
+- (void)safariViewControllerDidFinish:(SFSafariViewController *)controller {
+  NSLog(@"Did finish");
+  [self checkCloseWin];
+  _safariViewController=nil;
+}
+
+- (void)safariViewController:(SFSafariViewController *)controller didCompleteInitialLoad:(BOOL)didLoadSuccessfully {
+  NSLog(@"Did complete initial load");
 }
 
 @end

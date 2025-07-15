@@ -13,7 +13,7 @@
  */
 
 package com.google.cordova.plugin.browsertab;
-
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -23,6 +23,7 @@ import android.util.Log;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.ArrayList;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -57,30 +58,55 @@ public class BrowserTab extends CordovaPlugin {
 
   private boolean mFindCalled = false;
   private String mCustomTabsBrowser;
+  private String mLog = "";
 
   @Override
-  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) {
+  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    final Context context = this.cordova.getContext();
     Log.d(LOG_TAG, "executing " + action);
     if ("isAvailable".equals(action)) {
+      Log.d(LOG_TAG, "caught isAvailable " + action);
       isAvailable(callbackContext);
     } else if ("openUrl".equals(action)) {
       openUrl(args, callbackContext);
     } else if ("close".equals(action)) {
-      // close is a NOP on Android
-      return true;
+      Intent newIntent = new Intent(cordova.getActivity(), cordova.getActivity().getClass());
+      newIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+      cordova.getActivity().startActivity(newIntent);
+      //cordova.getActivity().startActivity(new Intent(cordova.getActivity(), cordova.getActivity().getClass()));
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, true));
+    } else if ("customTabBrowsers".equals(action)) {
+      JSONObject result = new JSONObject();
+      result.put("packages", getPackagesSupportingCustomTabs(context));
+      PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, result);
+      callbackContext.sendPluginResult(pluginResult);
     } else {
+      Log.d(LOG_TAG, "no handler for action:" + action);
       return false;
     }
 
     return true;
   }
 
-  private void isAvailable(CallbackContext callbackContext) {
+  private void appendLog(String msg) {
+    Log.d(LOG_TAG,msg);
+    mLog = mLog.concat(msg);
+    mLog = mLog.concat("\n");
+  }
+
+  private void isAvailable(CallbackContext callbackContext) throws JSONException {
+    Log.d(LOG_TAG, "before findCustomTabBrowser");
     String browserPackage = findCustomTabBrowser();
     Log.d(LOG_TAG, "browser package: " + browserPackage);
-    callbackContext.sendPluginResult(new PluginResult(
-        PluginResult.Status.OK,
-        browserPackage != null));
+    PluginResult pluginResult;
+    if (browserPackage==null) {
+      String s=String.format("no browser,log:%s",mLog);
+      pluginResult = new PluginResult( PluginResult.Status.ERROR, s);
+    } else {
+      pluginResult = new PluginResult( PluginResult.Status.OK, browserPackage);
+    }
+    callbackContext.sendPluginResult(pluginResult);
+    mLog="";
   }
 
   private void openUrl(JSONArray args, CallbackContext callbackContext) {
@@ -98,19 +124,21 @@ public class BrowserTab extends CordovaPlugin {
       callbackContext.error("URL argument is not a string");
       return;
     }
-
+    /* leo: doesn't work in the Android emulator even if Chrome and FF are installed
     String customTabsBrowser = findCustomTabBrowser();
     if (customTabsBrowser == null) {
       Log.d(LOG_TAG, "openUrl: no in app browser tab available");
       callbackContext.error("no in app browser tab implementation available");
-    }
+    }*/
 
     // Initialize Builder
     CustomTabsIntent.Builder customTabsIntentBuilder = new CustomTabsIntent.Builder();
 
     // Set tab color
+    /* TODO: have an options argument to pass colors etc, Genero Cordova doesn't build the original resource
     String tabColor = cordova.getActivity().getString(cordova.getActivity().getResources().getIdentifier("CUSTOM_TAB_COLOR_RGB", "string", cordova.getActivity().getPackageName()));
     customTabsIntentBuilder.setToolbarColor(colorParser.parseColor(tabColor));
+    */
 
     // Create Intent
     CustomTabsIntent customTabsIntent = customTabsIntentBuilder.build();
@@ -123,6 +151,7 @@ public class BrowserTab extends CordovaPlugin {
   }
 
   private String findCustomTabBrowser() {
+    appendLog(String.format("findCustomTabBrowser,mFindCalled:%b",mFindCalled));
     if (mFindCalled) {
       return mCustomTabsBrowser;
     }
@@ -133,21 +162,46 @@ public class BrowserTab extends CordovaPlugin {
         Uri.parse("http://www.example.com"));
     List<ResolveInfo> resolvedActivityList =
         pm.queryIntentActivities(webIntent, PackageManager.GET_RESOLVED_FILTER);
+    appendLog(String.format("resolvedActivityList size:%d",resolvedActivityList.size()));
 
     for (ResolveInfo info : resolvedActivityList) {
+      String name=String.format("%s,%s",info.activityInfo.packageName,info.resolvePackageName);
+        mCustomTabsBrowser = info.activityInfo.packageName;
+      appendLog(String.format("info %s", name));
       if (!isFullBrowser(info)) {
+        appendLog(String.format("no full browser: %s", name));
         continue;
       }
 
       if (hasCustomTabWarmupService(pm, info.activityInfo.packageName)) {
         mCustomTabsBrowser = info.activityInfo.packageName;
+        appendLog(String.format("mCustomTabsBrowser=%s,name:%s",mCustomTabsBrowser,name));
         break;
+      } else {
+        appendLog(String.format("no custom warmup for browser: %s", name));
       }
     }
 
     mFindCalled = true;
     return mCustomTabsBrowser;
   }
+
+  private List<String> getPackagesSupportingCustomTabs(Context context) {
+        Intent activityIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.example.com"));
+        PackageManager pm = context.getPackageManager();
+        List<ResolveInfo> resolvedActivityList = pm.queryIntentActivities(activityIntent, PackageManager.MATCH_ALL);
+        List<String> packagesSupportingCustomTabs = new ArrayList<>();
+        appendLog(String.format("getPackagesSupportingCustomTabs  resolvedActivityList size:%d",resolvedActivityList.size()));
+        for (ResolveInfo info : resolvedActivityList) {
+            Intent serviceIntent = new Intent();
+            serviceIntent.setAction(ACTION_CUSTOM_TABS_CONNECTION);
+            serviceIntent.setPackage(info.activityInfo.packageName);
+            if (pm.resolveService(serviceIntent, 0) != null) {
+                packagesSupportingCustomTabs.add(info.activityInfo.packageName);
+            }
+        }
+        return packagesSupportingCustomTabs;
+    }
 
   private boolean isFullBrowser(ResolveInfo resolveInfo) {
     // The filter must match ACTION_VIEW, CATEGORY_BROWSEABLE, and at least one scheme,
